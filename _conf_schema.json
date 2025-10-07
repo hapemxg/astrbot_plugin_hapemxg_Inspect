@@ -21,6 +21,15 @@
       }
     }
   },
+  "retry_system_prompt": {
+        "description": "重试时专用的系统提示词 (System Prompt)",
+        "type": "string",
+        "default": "",
+        "hint": "【重要】留空则使用当前对话的原始System Prompt。如果填写，则在重试时会用这里的内容**完全替换**掉原始的System Prompt。",
+        "extra": {
+          "is_text_area": true
+        }
+  },
   "review_levels": {
     "description": "分级审查配置",
     "type": "object",
