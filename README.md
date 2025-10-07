@@ -1,8 +1,7 @@
-# helloworld
+# hapemxg_Inspect
 
-AstrBot 插件模板
+这是 hapemxg 的审查插件
 
-A template plugin for AstrBot plugin feature
 
 # 支持
 
