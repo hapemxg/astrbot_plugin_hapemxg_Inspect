@@ -12,10 +12,10 @@ from astrbot.api.provider import LLMResponse, ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.api import AstrBotConfig, logger
 
-@register("ReviewerPlugin", "hapemxg", "LLM回复分级审查插件", "1.0.0")
+@register("ReviewerPlugin", "hapemxg", "hapemxg的审查插件", "1.0.0")
 class ReviewerPlugin(Star):
     """
-    这是hapemxg的的LLM回复审查插件。
+    这是hapemxg的LLM回复审查插件。
 
     核心功能:
     1.  **多层审查机制**: 在LLM生成回复后、发送给用户前，执行快速（基于正则）和深度（基于模型）两层审查。
@@ -46,6 +46,7 @@ class ReviewerPlugin(Star):
         self.enabled = self.config.get("enabled", False)
         self.log_to_console = self.config.get("enable_console_logging", True)
         self.reviewer_provider_id = self.config.get("reviewer_provider_id", "")
+        self.deep_review_context_depth = self.config.get("deep_review_context_depth", 2)
 
         # --- 重试逻辑配置 ---
         retry_settings = self.config.get("retry_settings", {})
@@ -112,33 +113,42 @@ class ReviewerPlugin(Star):
 
         # --- 初始化对话历史记录器 ---
         # 用于存储每个用户通过审查的对话，以便在后续审查中作为上下文参考
-        self.approved_history = defaultdict(lambda: deque(maxlen=2))
+        self.approved_history = defaultdict(lambda: deque(maxlen=self.deep_review_context_depth))
 
     def _parse_key_value_config(self, regex_str: str, prompt_str: str) -> 'OrderedDict':
         """
         解析配置文件中“键: 值”格式的多行文本，并编译正则表达式。
-
-        Args:
-            regex_str (str): 包含正则表达式规则的多行文本。
-            prompt_str (str): 包含对应提示词的多行文本。
-
-        Returns:
-            OrderedDict: 一个有序字典，键是规则名，值是包含已编译正则对象和提示词的字典。
         """
         rules = OrderedDict()
         regex_map = {}
         prompt_map = {}
-        # 分别解析正则表达式和提示词
-        for line in regex_str.strip().split('\n'):
-            if ':' in line:
-                key, value = line.split(':', 1)
-                regex_map[key.strip()] = value.strip()
-        for line in prompt_str.strip().split('\n'):
-            if ':' in line:
-                key, value = line.split(':', 1)
-                prompt_map[key.strip()] = value.strip()
         
-        # 合并并编译正则表达式，进行错误处理
+        # 定义一个正则表达式来匹配 "key: value" 格式
+        # ^\s*        - 匹配行首的任意空格
+        # ([^:]+?)    - 第1个捕获组 (key): 匹配一个或多个不为冒号的字符，非贪婪
+        # \s*:\s*     - 匹配key和value之间的冒号，以及两边的任意空格
+        # (.*)        - 第2个捕获组 (value): 匹配行内余下的所有字符
+        # $           - 匹配行尾
+        line_pattern = re.compile(r"^\s*([^:]+?)\s*:\s*(.*)$")
+
+        # --- 解析正则表达式 ---
+        for line in regex_str.strip().split('\n'):
+            match = line_pattern.match(line)
+            if match:
+                # 如果匹配成功，group(1)是key，group(2)是value
+                key, value = match.groups()
+                if key and value: # 确保key和value都不是空字符串
+                    regex_map[key] = value
+
+        # --- 解析提示词 ---
+        for line in prompt_str.strip().split('\n'):
+            match = line_pattern.match(line)
+            if match:
+                key, value = match.groups()
+                if key and value:
+                    prompt_map[key] = value
+        
+        # --- 合并并编译 ---
         for key, regex_pattern in regex_map.items():
             if key in prompt_map:
                 try:
@@ -182,23 +192,6 @@ class ReviewerPlugin(Star):
         if self.log_to_console:
             logger.info("[ReviewerPlugin] 快速审查通过。")
         return True, ""
-
-    def _convert_message_chain_to_str(self, message_chain: list) -> str:
-        """
-        将 AstrBot 的消息链对象转换为纯文本字符串。
-        主要用于提取用户输入的文本内容。
-
-        Args:
-            message_chain (list): 包含消息组件的列表。
-
-        Returns:
-            str: 拼接后的纯文本字符串。
-        """
-        if not message_chain:
-            return ""
-        # 提取所有 Plain (文本) 组件的 text 属性并连接
-        rich_str_parts = [comp.text for comp in message_chain if isinstance(comp, Comp.Plain)]
-        return " ".join(filter(None, rich_str_parts)).strip()
 
     def _parse_review_result(self, text: str) -> dict:
         """
@@ -245,8 +238,8 @@ class ReviewerPlugin(Star):
         if self.enabled:
             # 将原始请求对象附加到事件对象上，方便后续钩子访问
             setattr(event, '_original_llm_request_for_reviewer', req)
-            # 从消息链中提取纯文本作为用户输入，如果为空则使用请求中的prompt
-            final_user_prompt = self._convert_message_chain_to_str(event.message_obj.message) or req.prompt
+            # 使用 event.message_str 获取消息中的纯文本内容，如果为空则回退到使用请求中的prompt
+            final_user_prompt = event.message_str or req.prompt
             setattr(event, '_user_prompt_for_reviewer', final_user_prompt)
 
     @event_filter.on_llm_response(priority=10)
@@ -297,6 +290,10 @@ class ReviewerPlugin(Star):
                     current_turn_str = f"--- 当前待审查的对话 ---\n用户的最新提问: {user_prompt_for_review}\n待审查的回复: {current_response_text}"
                     review_prompt = f"请结合以下对话历史，判断“当前待审查的对话”中的回复是否合规。\n\n{past_dialogue_str}{current_turn_str}"
                     
+                    # 打印将要发送给审查模型的完整请求
+                    if self.log_to_console:
+                        logger.info(f"[ReviewerPlugin] 第 {attempt} 次【深度审查】发送给审查模型的请求:\n---\n{review_prompt}\n---")
+
                     # 调用审查模型
                     review_result_resp = await self.reviewer_provider.text_chat(prompt=review_prompt, session_id=f"reviewer_{user_session_key}", system_prompt=self.final_reviewer_system_prompt)
                     review_result_text = review_result_resp.completion_text.strip()

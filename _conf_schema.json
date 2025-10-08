@@ -15,6 +15,12 @@
     "type": "string",
     "hint": "请在 LLM 提供商设置页面，复制您指定用于审查的小模型的ID并粘贴于此。若留空，【深度审查】功能将不会启用。"
   },
+  "deep_review_context_depth": {
+    "description": "深度审查时引用的对话历史轮次",
+    "type": "int",
+    "default": 2,
+    "hint": "设置在进行深度审查时，插件应向前追溯多少轮已通过的对话作为上下文参考。较大的值可以提高审查准确性，但会增加审查模型的token消耗。设置为0则不使用任何历史记录。"
+  },
   "retry_settings": {
     "description": "重试与循环审查配置",
     "type": "object",

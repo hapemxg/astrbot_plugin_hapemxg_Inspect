@@ -1,5 +1,5 @@
-name: hapemxg_Inspect # 这是你的插件的唯一识别名。
-desc: 这是 hapemxg 的审查插件。 # 插件简短描述
+name: astrbot_plugin_hapemxg_Inspect # 这是你的插件的唯一识别名。
+desc: 一个智能的LLM回复安全网关。它在LLM生成回复后、发送给用户前，通过“正则快审 + 轻量级模型深审”双层机制进行内容把关。当发现不合规内容时，它不会简单丢弃，而是将审查意见反馈给主模型，引导其自动重试并修正，实现真正的内容安全闭环。 # 插件简短描述
 version: v1.0.0 # 插件版本号。格式：v1.1.1 或者 v1.1
 author: hapemxg # 作者
 repo: https://github.com/hapemxg/astrbot_plugin_hapemxg_Inspect # 插件的仓库地址
