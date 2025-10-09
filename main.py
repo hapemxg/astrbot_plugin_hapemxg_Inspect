@@ -6,10 +6,13 @@ import re
 from collections import deque, defaultdict, OrderedDict
 from typing import Tuple, List, Optional
 import asyncio
+# MODIFIED: 移除了 os 的导入，因为路径操作将由 pathlib 处理
 from dataclasses import dataclass, field
 
 # 导入 AstrBot 框架的核心组件
 from astrbot.api.event import filter as event_filter, AstrMessageEvent
+from astrbot.api.provider import LLMResponse, ProviderRequest
+# MODIFIED: 从 astrbot.api.star 导入了 StarTools
 from astrbot.api.star import Context, Star, register, StarTools
 from astrbot.api import AstrBotConfig, logger
 
@@ -82,8 +85,10 @@ class ReviewerPlugin(Star):
         self.reviewer_provider = None
 
         # --- 持久化与历史记录设置 ---
+        # MODIFIED: 使用 StarTools 获取规范的数据目录，不再硬编码路径
         data_root = StarTools.get_data_dir(self.__class__.PLUGIN_ID)
         data_root.mkdir(parents=True, exist_ok=True)
+        # MODIFIED: 使用 pathlib 的 / 操作符进行路径拼接
         self.history_file_path = data_root / "approved_history.json"
         self.history_lock = asyncio.Lock()  # 异步锁，确保文件写入操作的原子性
         self.history_dirty = False  # 脏位，标记历史记录是否被修改，用于优化保存性能
