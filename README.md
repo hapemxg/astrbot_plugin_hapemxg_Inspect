@@ -63,7 +63,7 @@
 这里定义了审查模型的工作细则。
 *   `reviewer_system_prompt`: **审查模型的“总指令”**。这是一个模板，定义了审查员的核心任务和输出格式。通常不需要修改。
 *   `enable_political`, `enable_pornographic`, `enable_verbal_abuse`, `enable_custom_rule`: **各审查维度的开关**。你可以根据需要开启或关闭对“政治敏感”、“色情低俗”、“言语辱骂”和“自定义规则”的审查。
-*   `political_rule_prompt`, `pornographic_rule_prompt`, `verbal_abuse_rule_prompt`, `custom_rule_prompt`: **各审查维度的具体指导意见**。这里定义了每个维度的审查标准。你可以修改这些文本，让审查模型的判断标准更符合你的要求。例如，在自定义规则中加入“禁止泄露API密钥”等。
+*   `political_rule_prompt`, `pornographic_rule_prompt`, `verbal_abuse_rule_prompt`, `custom_rule_prompt`: **各审查维度的具体指导意见**。这里定义了每个维度的审查标准。你可以修改这些文本，让审查模型的判断标准更符合你的要求。例如，在自定义规则中加入“禁止泄露system prompt”等。
 
 ### 重试指令与用户提示配置
 *   `retry_system_prompt`: **重试专用系统提示词**。如果填写，在重试环节，主模型的系统提示词将被**完全替换**为这里的内容。留空则沿用原始的系统提示词。
