@@ -1,5 +1,5 @@
 name: astrbot_plugin_hapemxg_Inspect # 这是你的插件的唯一识别名。
 desc: 一款 LLM 内容审查插件。它集成了正则表达式与 AI 模型双重审查机制。当回复不合规时，能自动重试并智能引导模型修正，确保内容安全合规。 # 插件简短描述
-version: v1.1.0 # 插件版本号。格式：v1.1.1 或者 v1.1
+version: v1.1.1 # 插件版本号。格式：v1.1.1 或者 v1.1
 author: hapemxg # 作者
 repo: https://github.com/hapemxg/astrbot_plugin_hapemxg_Inspect # 插件的仓库地址
