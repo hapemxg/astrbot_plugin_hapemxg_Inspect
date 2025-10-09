@@ -6,13 +6,11 @@ import re
 from collections import deque, defaultdict, OrderedDict
 from typing import Tuple, List, Optional
 import asyncio
-import os
 from dataclasses import dataclass, field
 
 # 导入 AstrBot 框架的核心组件
 from astrbot.api.event import filter as event_filter, AstrMessageEvent
-from astrbot.api.provider import LLMResponse, ProviderRequest
-from astrbot.api.star import Context, Star, register
+from astrbot.api.star import Context, Star, register, StarTools
 from astrbot.api import AstrBotConfig, logger
 
 @dataclass
@@ -27,19 +25,6 @@ class ReviewCycleResult:
 class ReviewerPlugin(Star):
     """
     这是hapemxg的LLM回复审查插件。
-
-    核心功能:
-    1.  **多层审查机制**: 在LLM生成回复后、发送给用户前，执行快速（基于正则）和深度（基于模型）两层审查。
-    2.  **闭环重试与修正**: 当审查失败时，能自动生成指导意见，引导主模型重新生成回复，形成“审查-反馈-修正”的闭环。
-    3.  **上下文感知与持久化**: 在进行深度审查时，会参考最近的、已通过审查的对话历史，以做出更精准的判断。历史记录会被持久化到本地文件，重启不丢失。
-    4.  **高度可配置**: 从审查开关到重试逻辑，再到每个审查维度的具体标准和提示语，几乎所有行为都可通过配置文件进行调整。
-    5.  **健壮的架构**: 采用模块化设计，将复杂逻辑拆分为单一职责的函数；通过后台任务和异步锁确保历史记录的稳定保存；运行时懒加载审查模型，提高了对环境变化的适应性。
-    
-    (v1.1.0) 重构与优化:
-    1.  **代码结构重构**: 遵循AI审核报告建议，将冗长的 `__init__` 和 `review_llm_response` 方法拆分为多个职责清晰的辅助函数，大幅提升了代码的可读性和可维护性。
-    2.  **历史记录持久化**: 新增了基于JSON文件的对话历史持久化功能，解决了重启后上下文丢失的问题。通过后台异步任务定时保存，并通过 `terminate` 方法确保程序退出时数据不丢失。
-    3.  **审查模型懒加载**: 将审查提供商的获取逻辑从启动时检查改为运行时懒加载，解决了因启动顺序问题导致提供商找不到的BUG，增强了插件的健壮性。
-    4.  **注释与文档**: 全面重写和优化了代码注释，使其达到可发布标准。
     """
     # --- 使用常量管理JSON和字典中的键名，以提高代码的可维护性和减少硬编码错误 ---
     PLUGIN_ID = "ReviewerPlugin"
@@ -97,9 +82,9 @@ class ReviewerPlugin(Star):
         self.reviewer_provider = None
 
         # --- 持久化与历史记录设置 ---
-        data_root = os.path.join("data", "plugin_data", self.__class__.PLUGIN_ID)
-        os.makedirs(data_root, exist_ok=True)
-        self.history_file_path = os.path.join(data_root, "approved_history.json")
+        data_root = StarTools.get_data_dir(self.__class__.PLUGIN_ID)
+        data_root.mkdir(parents=True, exist_ok=True)
+        self.history_file_path = data_root / "approved_history.json"
         self.history_lock = asyncio.Lock()  # 异步锁，确保文件写入操作的原子性
         self.history_dirty = False  # 脏位，标记历史记录是否被修改，用于优化保存性能
         
@@ -503,4 +488,4 @@ class ReviewerPlugin(Star):
         logger.error(f"[ReviewerPlugin] 已达到最大尝试次数 ({self.max_attempts})，审查最终失败。")
         if self.send_failure_message:
             await event.send(event.plain_result(self.final_failure_message))
-        event.stop_event() # 终止事件，阻止发送不合规的最终回复```
+        event.stop_event() # 终止事件，阻止发送不合规的最终回复
