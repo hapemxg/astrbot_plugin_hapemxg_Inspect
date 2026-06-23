@@ -11,18 +11,16 @@
     "hint": "开启后，插件的每一次审查、重试、成功或失败都会在后台打印日志，便于追踪和调试。"
   },
   "whitelisted_user_ids": {
-    "description": "审查白名单用户ID (每行一个)",
-    "type": "text",
-    "default": "",
-    "hint": "在此处添加的用户ID所发送的消息将完全跳过所有审查流程（包括快速和深度审查）。请确保每行只填写一个用户ID。",
-    "extra": {
-      "is_text_area": true
-    }
+    "description": "审查白名单用户ID",
+    "type": "list",
+    "default": [],
+    "hint": "在此处添加的用户ID所发送的消息将完全跳过所有审查流程（包括快速和深度审查）。"
   },
   "reviewer_provider_id": {
     "description": "用于内容审查的LLM提供商ID",
     "type": "string",
-    "hint": "请在 LLM 提供商设置页面，复制您指定用于审查的小模型的ID并粘贴于此。若留空，【深度审查】功能将不会启用。"
+    "_special": "select_provider",
+    "hint": "请选择您指定用于审查的小模型。若留空，【深度审查】功能将不会启用。"
   },
   "reviewer_is_multimodal": {
     "description": "审查模型是否支持多模态(识图)",
@@ -60,6 +58,7 @@
       "fallback_provider_id": {
         "description": "备用LLM提供商ID",
         "type": "string",
+        "_special": "select_provider",
         "default": "",
         "hint": "当重试次数达到下方设定的阈值后，将切换到此ID对应的模型进行生成。"
       },
